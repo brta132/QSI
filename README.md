@@ -38,6 +38,8 @@ Todas estes ficheiros, assim como a estrutura descrita são vitais para o normal
 
 - **Desligar todos os outros processos**: para que estes processos não afetem as medições, todos os processos (com exceção dos iniciados pelo *script*) devem ser desligados antes de se iniciar o programa.
 
+**NOTA**: Atualmente o programa está a utilizar muitos recursos, em específico a RAM e o CPU, o que está a levar a que estes componentes atinjam temperaturas estupidamente altas (entre os 92ºC e os 99ºC), pelo que não podemos recomendar que o programa seja corrido sem supervisão.
+
 ## Dependências<a id="item-dependencias"></a>
 
 Este *script* foi desenvolvido para correr um ficheiro .exe em ambiente Linux, pelo que tem algumas dependências obrigatórias para o seu funcionamento. Sendo estas:

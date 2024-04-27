@@ -1,20 +1,16 @@
-from datetime import datetime, time
+from datetime import datetime, timedelta
 import os
 import subprocess
 import schedule
 
 EXIT_MAIN: bool = False
 EXIT: bool = False
-COUNT: int = 0
+COUNT_BRAGA: int = 0
+COUNT_AVEIRO: int = 0
 
 def add_error(error_str: str)-> None:
-    """_summary_
 
-    Args:
-        error_str (str): _description_
-    """
-
-    error_file_path: str = os.getcwd + '/speedtest-data/error.txt'
+    error_file_path: str = os.getcwd() + '/speedtest-data/error.txt'
 
     with open(error_file_path, 'a') as error_file:
             error_file.write(error_str.decode('utf-8'))
@@ -23,18 +19,15 @@ def add_error(error_str: str)-> None:
             EXIT_MAIN = True
             return
     
-def add_csv_line(output:str) -> None:
-
-    data_file_path: str = os.getcwd() + '/speedtest-data/speedtest_data.csv'
+def add_csv_line(output:str, data_file_path:str) -> None:
     with open(data_file_path,'a') as csv_file:
         csv_file.write(output)
         csv_file.close()
         return
 
-def speed_test_loop() -> None:
+def speed_test_loop(server_id:int, data_file_path:str, tag:str) -> None:
 
     path_to_exe: str = os.getcwd() + '/speedtest.exe'
-    server_id: int = 57814
 
     ## run wine .exe -s {server_id} -f csv and append
     speedtest_cm: str = f'wine {path_to_exe} -s {server_id} -f csv'
@@ -54,12 +47,14 @@ def speed_test_loop() -> None:
         output = output.replace('\r\n','\n')
         output = output[:-1] #remove last \n
         output = f'{output},"{timestamp}","{datetime_csv}"\n'
-        print(repr(output))
 
         #append output to csv_file
-        add_csv_line(output)
+        add_csv_line(output, data_file_path=data_file_path)
 
-    COUNT =+ 1
+    if(tag == 'Braga'):
+        COUNT_BRAGA =+ 1
+    else:
+        COUNT_AVEIRO =+ 1
     return
 
 def start_programs(max_repetitions_speedtest:int) -> None:
@@ -67,27 +62,34 @@ def start_programs(max_repetitions_speedtest:int) -> None:
 
     #open youtube video in firefox (surpress errors by redirecting to DEVNULL)
     video_url: str = 'https://www.youtube.com/watch?v=gYFQcOFUnqU'
-    subprocess.Popen('firefox ' + video_url, shell=True, stderr= subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+    firefox = subprocess.Popen('firefox ' + video_url, shell=True, stderr= subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
-    #schedule speedtest to run every 10 minutes
-    schedule.every(10).minutes.do(speed_test_loop)
+    #schedule speedtest to run every 2 minutes
+    data_file_path_braga: str = os.getcwd() + '/speedtest-data/speedtest_data_braga.csv'
+    data_file_path_aveiro: str = os.getcwd() + '/speedtest-data/speedtest_data_aveiro.csv'
+
+    schedule.every(2).minutes.do(speed_test_loop,server_id=57814, data_file_path=data_file_path_braga,tag='Braga').tag('Braga') #Braga
+    schedule.every(2).minutes.do(speed_test_loop,server_id= 54303, data_file_path=data_file_path_aveiro,tag='Aveiro').tag('Aveiro') #Aveiro
+
     #schedule.every(1).minutes.do(speed_test_loop) [FOR TESTING]
 
-    while EXIT == False and COUNT < max_repetitions_speedtest:
+    while EXIT == False:
+        if(COUNT_BRAGA > max_repetitions_speedtest):
+            schedule.cancel_job('Braga')
+        if(COUNT_AVEIRO > max_repetitions_speedtest):
+            schedule.cancel_job('Aveiro')
         schedule.run_pending()
 
     EXIT_MAIN = True
+    firefox.kill()
     return
 
 def main():
-    #schedule job to run at 1 AM
-    schedule.every().day.at('01:00:00').do(start_programs(25))
+    #schedule job to run at 1 AM for 30 minutes
+    schedule.every().day.at('13:30').until(timedelta(minutes=30)).do(start_programs(15)).tag('main-job')
     #schedule.every().hour.do(start_programs(3)) [FOR TESTING]
-    
-    timeout:int = 4*60*60 #set a timeout for 4 hours
-    timeout_start:time = time.time()
 
-    while EXIT_MAIN == False and time.time() < timeout_start + timeout:
+    while EXIT_MAIN == False:
         schedule.run_pending()
     return
 
